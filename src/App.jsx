@@ -582,20 +582,6 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="config-box value-field">
-                      <h3>무엇을 셀까요?</h3>
-                      <select
-                        value={valueField}
-                        onChange={(e) => setValueField(e.target.value)}
-                        className="select"
-                      >
-                        <option value="">선택하세요</option>
-                        {columns.map(col => (
-                          <option key={col} value={col}>{col}</option>
-                        ))}
-                      </select>
-                    </div>
-
                     <div className="config-box aggregation">
                       <h3>어떻게 계산할까요?</h3>
                       <select
@@ -611,14 +597,20 @@ function App() {
                         <option value="MIN">최소값</option>
                       </select>
                       
-                      {aggregation === 'UNIQUE' && (
+                      {(aggregation === 'UNIQUE' || aggregation === 'SUM' || aggregation === 'AVG' || aggregation === 'MAX' || aggregation === 'MIN') && (
                         <div style={{marginTop: '1rem'}}>
                           <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
-                            어떤 필드를 유니크로 셀까요?
+                            {aggregation === 'UNIQUE' ? '어떤 필드를 유니크로 셀까요?' : '어떤 필드를 계산할까요?'}
                           </label>
                           <select
-                            value={uniqueField}
-                            onChange={(e) => setUniqueField(e.target.value)}
+                            value={aggregation === 'UNIQUE' ? uniqueField : valueField}
+                            onChange={(e) => {
+                              if (aggregation === 'UNIQUE') {
+                                setUniqueField(e.target.value);
+                              } else {
+                                setValueField(e.target.value);
+                              }
+                            }}
                             className="select"
                           >
                             <option value="">선택하세요</option>
