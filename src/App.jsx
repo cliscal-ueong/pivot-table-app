@@ -140,10 +140,26 @@ function App() {
 
     const grouped = {};
     
+    // 기간 필터 적용 시 날짜 필드 제외
+    const activeRowFields = filterEnabled && startDate && endDate
+      ? rowFields.filter(field => !dateFields.includes(field))
+      : rowFields;
+    
+    const activeColumnFields = filterEnabled && startDate && endDate
+      ? columnFields.filter(field => !dateFields.includes(field))
+      : columnFields;
+    
+    // 필터 적용했는데 날짜 필드만 선택된 경우
+    if (activeRowFields.length === 0 && activeColumnFields.length === 0 && (rowFields.length > 0 || columnFields.length > 0)) {
+      return null;
+    }
+    
+    if (activeRowFields.length === 0) return null;
+    
     filteredData.forEach(row => {
-      const rowKey = rowFields.map(field => formatDateValue(row[field], field)).join(' | ');
-      const colKey = columnFields.length 
-        ? columnFields.map(field => formatDateValue(row[field], field)).join(' | ')
+      const rowKey = activeRowFields.map(field => formatDateValue(row[field], field)).join(' | ');
+      const colKey = activeColumnFields.length 
+        ? activeColumnFields.map(field => formatDateValue(row[field], field)).join(' | ')
         : 'Total';
       
       if (!grouped[rowKey]) grouped[rowKey] = {};
@@ -164,7 +180,7 @@ function App() {
     };
 
     return result;
-  }, [filteredData, rowFields, columnFields, dateGrouping]);
+  }, [filteredData, rowFields, columnFields, dateGrouping, filterEnabled, startDate, endDate, dateFields]);
 
   const calculateValue = (items) => {
     if (!items || items.length === 0) return 0;
