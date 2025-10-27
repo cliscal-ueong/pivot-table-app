@@ -15,6 +15,9 @@ function App() {
   const [showConfig, setShowConfig] = useState(true);
   const [dateFields, setDateFields] = useState([]);
   const [dateGrouping, setDateGrouping] = useState({});
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [filterEnabled, setFilterEnabled] = useState(false);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -99,12 +102,36 @@ function App() {
     }
   };
 
+  const isDateInRange = (dateValue) => {
+    if (!filterEnabled || !startDate || !endDate) return true;
+    
+    const dateStr = String(dateValue);
+    const match = dateStr.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if (!match) return true;
+    
+    const [, year, month, day] = match;
+    const itemDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    
+    return itemDate >= startDate && itemDate <= endDate;
+  };
+
+  const filteredData = useMemo(() => {
+    if (!filterEnabled || !startDate || !endDate || dateFields.length === 0) {
+      return data;
+    }
+    
+    return data.filter(row => {
+      // 날짜 필드 중 하나라도 범위 안에 있으면 포함
+      return dateFields.some(field => isDateInRange(row[field]));
+    });
+  }, [data, filterEnabled, startDate, endDate, dateFields]);
+
   const pivotData = useMemo(() => {
-    if (!data.length || !rowFields.length) return null;
+    if (!filteredData.length || !rowFields.length) return null;
 
     const grouped = {};
     
-    data.forEach(row => {
+    filteredData.forEach(row => {
       const rowKey = rowFields.map(field => formatDateValue(row[field], field)).join(' | ');
       const colKey = columnFields.length 
         ? columnFields.map(field => formatDateValue(row[field], field)).join(' | ')
@@ -128,7 +155,7 @@ function App() {
     };
 
     return result;
-  }, [data, rowFields, columnFields, dateGrouping]);
+  }, [filteredData, rowFields, columnFields, dateGrouping]);
 
   const calculateValue = (items) => {
     if (!items || items.length === 0) return 0;
@@ -238,26 +265,96 @@ function App() {
             {showConfig && columns.length > 0 && (
               <div className="config-grid">
                 {dateFields.length > 0 && (
-                  <div className="config-box date-grouping" style={{gridColumn: '1 / -1', background: '#fef3c7'}}>
-                    <h3 style={{color: '#78350f'}}>📅 날짜 그룹핑</h3>
-                    <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
-                      {dateFields.map(field => (
-                        <div key={field} style={{flex: '1', minWidth: '200px'}}>
-                          <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600'}}>
-                            {field}
+                  <>
+                    <div className="config-box date-filter" style={{gridColumn: '1 / -1', background: '#dbeafe'}}>
+                      <h3 style={{color: '#1e40af'}}>📅 기간 필터 (선택사항)</h3>
+                      <div style={{display: 'flex', gap: '1rem', alignItems: 'end', flexWrap: 'wrap'}}>
+                        <div style={{flex: '1', minWidth: '150px'}}>
+                          <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
+                            시작일
                           </label>
-                          <select
-                            value={dateGrouping[field] || 'daily'}
-                            onChange={(e) => setDateGrouping(prev => ({...prev, [field]: e.target.value}))}
+                          <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
                             className="select"
-                          >
-                            <option value="daily">일별</option>
-                            <option value="monthly">월별</option>
-                          </select>
+                          />
                         </div>
-                      ))}
+                        <div style={{flex: '1', minWidth: '150px'}}>
+                          <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
+                            종료일
+                          </label>
+                          <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="select"
+                          />
+                        </div>
+                        <div style={{display: 'flex', gap: '0.5rem'}}>
+                          <button
+                            onClick={() => setFilterEnabled(true)}
+                            disabled={!startDate || !endDate}
+                            style={{
+                              padding: '0.75rem 1.5rem',
+                              background: (startDate && endDate) ? '#3b82f6' : '#94a3b8',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.5rem',
+                              cursor: (startDate && endDate) ? 'pointer' : 'not-allowed',
+                              fontWeight: '600'
+                            }}
+                          >
+                            필터 적용
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFilterEnabled(false);
+                              setStartDate('');
+                              setEndDate('');
+                            }}
+                            style={{
+                              padding: '0.75rem 1.5rem',
+                              background: '#64748b',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.5rem',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            전체 보기
+                          </button>
+                        </div>
+                      </div>
+                      {filterEnabled && startDate && endDate && (
+                        <div style={{marginTop: '1rem', padding: '0.75rem', background: '#3b82f6', color: 'white', borderRadius: '0.5rem', fontWeight: '600'}}>
+                          ✓ 필터 적용 중: {startDate} ~ {endDate} ({filteredData.length}개 행)
+                        </div>
+                      )}
                     </div>
-                  </div>
+                    
+                    <div className="config-box date-grouping" style={{gridColumn: '1 / -1', background: '#fef3c7'}}>
+                      <h3 style={{color: '#78350f'}}>📅 날짜 그룹핑</h3>
+                      <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                        {dateFields.map(field => (
+                          <div key={field} style={{flex: '1', minWidth: '200px'}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600'}}>
+                              {field}
+                            </label>
+                            <select
+                              value={dateGrouping[field] || 'daily'}
+                              onChange={(e) => setDateGrouping(prev => ({...prev, [field]: e.target.value}))}
+                              className="select"
+                            >
+                              <option value="daily">일별</option>
+                              <option value="monthly">월별</option>
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
                 
                 <div className="config-box row-fields">
