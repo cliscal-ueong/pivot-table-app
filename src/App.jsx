@@ -11,6 +11,7 @@ function App() {
   const [columnFields, setColumnFields] = useState([]);
   const [valueField, setValueField] = useState('');
   const [aggregation, setAggregation] = useState('COUNT');
+  const [uniqueField, setUniqueField] = useState('');
   const [showConfig, setShowConfig] = useState(true);
   const [dateFields, setDateFields] = useState([]);
   const [dateGrouping, setDateGrouping] = useState({});
@@ -135,6 +136,10 @@ function App() {
     switch(aggregation) {
       case 'COUNT':
         return items.length;
+      case 'UNIQUE':
+        if (!uniqueField) return 0;
+        const uniqueValues = new Set(items.map(item => item[uniqueField]));
+        return uniqueValues.size;
       case 'SUM':
         return items.reduce((sum, item) => {
           const val = parseFloat(item[valueField]);
@@ -276,7 +281,7 @@ function App() {
                 <div className="config-box column-fields">
                   <h3>
                     <Table2 size={20} />
-                    열 필드
+                    비교할 항목 (가로) - 선택사항
                   </h3>
                   <div className="field-list">
                     {columns.map(col => (
@@ -292,7 +297,7 @@ function App() {
                 </div>
 
                 <div className="config-box value-field">
-                  <h3>값 필드</h3>
+                  <h3>무엇을 셀까요?</h3>
                   <select
                     value={valueField}
                     onChange={(e) => setValueField(e.target.value)}
@@ -306,18 +311,37 @@ function App() {
                 </div>
 
                 <div className="config-box aggregation">
-                  <h3>집계 방식</h3>
+                  <h3>어떻게 계산할까요?</h3>
                   <select
                     value={aggregation}
                     onChange={(e) => setAggregation(e.target.value)}
                     className="select"
                   >
                     <option value="COUNT">개수</option>
+                    <option value="UNIQUE">유니크 개수</option>
                     <option value="SUM">합계</option>
                     <option value="AVG">평균</option>
                     <option value="MAX">최대값</option>
                     <option value="MIN">최소값</option>
                   </select>
+                  
+                  {aggregation === 'UNIQUE' && (
+                    <div style={{marginTop: '1rem'}}>
+                      <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
+                        어떤 필드를 유니크로 셀까요?
+                      </label>
+                      <select
+                        value={uniqueField}
+                        onChange={(e) => setUniqueField(e.target.value)}
+                        className="select"
+                      >
+                        <option value="">선택하세요</option>
+                        {columns.map(col => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
