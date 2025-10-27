@@ -299,7 +299,7 @@ function App() {
               <div className="header-left">
                 <BarChart3 size={32} />
                 <div>
-                  <h1>피벗 테이블 분석기</h1>
+                  <h1>매출 데이터 분석 Tool_by. MGT</h1>
                   <p className="subtitle">데이터를 자유롭게 분석하세요</p>
                 </div>
               </div>
