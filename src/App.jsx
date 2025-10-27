@@ -106,10 +106,12 @@ function App() {
     if (!filterEnabled || !startDate || !endDate) return true;
     
     const dateStr = String(dateValue);
+    // 슬래시(/)와 하이픈(-) 모두 지원
     const match = dateStr.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
     if (!match) return true;
     
     const [, year, month, day] = match;
+    // 하이픈 형식으로 통일
     const itemDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     
     return itemDate >= startDate && itemDate <= endDate;
@@ -120,10 +122,17 @@ function App() {
       return data;
     }
     
-    return data.filter(row => {
+    const filtered = data.filter(row => {
       // 날짜 필드 중 하나라도 범위 안에 있으면 포함
-      return dateFields.some(field => isDateInRange(row[field]));
+      return dateFields.some(field => {
+        const value = row[field];
+        if (!value) return false;
+        return isDateInRange(value);
+      });
     });
+    
+    console.log('필터링 결과:', filtered.length, '개 행');
+    return filtered;
   }, [data, filterEnabled, startDate, endDate, dateFields]);
 
   const pivotData = useMemo(() => {
@@ -199,6 +208,17 @@ function App() {
     }
   };
 
+  const resetAllSettings = () => {
+    setRowFields([]);
+    setColumnFields([]);
+    setValueField('');
+    setAggregation('COUNT');
+    setUniqueField('');
+    setStartDate('');
+    setEndDate('');
+    setFilterEnabled(false);
+  };
+
   const exportToExcel = () => {
     if (!pivotData) return;
     
@@ -237,6 +257,13 @@ function App() {
               >
                 <Settings size={20} />
                 {showConfig ? '설정 숨기기' : '설정 보기'}
+              </button>
+              <button
+                onClick={resetAllSettings}
+                className="config-btn"
+                style={{background: 'rgba(239, 68, 68, 0.2)'}}
+              >
+                🔄 초기화
               </button>
             </div>
           </div>
@@ -336,6 +363,11 @@ function App() {
                     
                     <div className="config-box date-grouping" style={{gridColumn: '1 / -1', background: '#fef3c7'}}>
                       <h3 style={{color: '#78350f'}}>📅 날짜 그룹핑</h3>
+                      {filterEnabled && startDate && endDate && (
+                        <div style={{marginBottom: '1rem', padding: '0.75rem', background: '#fef9c3', border: '2px solid #facc15', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
+                          💡 <strong>안내:</strong> 필터링된 기간 ({startDate} ~ {endDate}) 내에서 그룹핑됩니다
+                        </div>
+                      )}
                       <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
                         {dateFields.map(field => (
                           <div key={field} style={{flex: '1', minWidth: '200px'}}>
