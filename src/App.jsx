@@ -648,20 +648,41 @@ function App() {
               </div>
             )}
 
-            {periodMetrics && (
+            {periodMetrics && filteredMetrics && (
               <div style={{marginTop: '2rem'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap'}}>
+                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0}}>
                     📊 기간별 측정 결과 ({startDate} ~ {endDate})
                   </h2>
-                  <button
-                    onClick={exportToExcel}
-                    className="export-btn"
-                  >
-                    <Download size={18} />
-                    Excel 내보내기
-                  </button>
+                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                    <input
+                      type="text"
+                      value={resultSearch}
+                      onChange={(e) => setResultSearch(e.target.value)}
+                      placeholder="🔍 결과 내 검색..."
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.9rem',
+                        width: '200px'
+                      }}
+                    />
+                    <button
+                      onClick={exportToExcel}
+                      className="export-btn"
+                    >
+                      <Download size={18} />
+                      Excel 내보내기
+                    </button>
+                  </div>
                 </div>
+                
+                {resultSearch && (
+                  <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
+                    🔍 "{resultSearch}" 검색 결과: {filteredMetrics.length}개 항목
+                  </div>
+                )}
                 
                 <div className="table-container">
                   <table>
@@ -673,7 +694,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {periodMetrics.map((metric, idx) => (
+                      {filteredMetrics.map((metric, idx) => (
                         <tr key={metric.id} className={idx % 2 === 0 ? 'even' : 'odd'}>
                           <td style={{fontWeight: '600'}}>
                             {metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field}
@@ -698,16 +719,37 @@ function App() {
 
             {pivotData && !periodMetrics && (
               <div style={{marginTop: '2rem'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937'}}>피벗 테이블 결과</h2>
-                  <button
-                    onClick={exportToExcel}
-                    className="export-btn"
-                  >
-                    <Download size={18} />
-                    Excel 내보내기
-                  </button>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap'}}>
+                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0}}>피벗 테이블 결과</h2>
+                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                    <input
+                      type="text"
+                      value={resultSearch}
+                      onChange={(e) => setResultSearch(e.target.value)}
+                      placeholder="🔍 결과 내 검색..."
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.9rem',
+                        width: '200px'
+                      }}
+                    />
+                    <button
+                      onClick={exportToExcel}
+                      className="export-btn"
+                    >
+                      <Download size={18} />
+                      Excel 내보내기
+                    </button>
+                  </div>
                 </div>
+                
+                {resultSearch && (
+                  <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
+                    🔍 "{resultSearch}" 검색 결과: {filteredPivotRows.length}개 행
+                  </div>
+                )}
                 
                 <div className="table-container">
                   <table>
@@ -722,7 +764,7 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pivotData.rows.map((row, idx) => (
+                      {filteredPivotRows.map((row, idx) => (
                         <tr key={row} className={idx % 2 === 0 ? 'even' : 'odd'}>
                           <td className="sticky-col">{row}</td>
                           {pivotData.columns.map(col => (
