@@ -1,22 +1,174 @@
-// 결과 테이블 검색 필터링
-  const filteredPivotRows = useMemo(() => {
-    if (!pivotData || !resultSearch) return pivotData?.rows || [];
-    
-    const search = resultSearch.toLowerCase();
-    return pivotData.rows.filter(row => {
-      return row.toLowerCase().includes(search);
-    });
-  }, [pivotData, resultSearch]);
+</div>
+            )}
 
-  const filteredMetrics = useMemo(() => {
-    if (!periodMetrics || !resultSearch) return periodMetrics;
-    
-    const search = resultSearch.toLowerCase();
-    return periodMetrics.filter(metric => {
-      const field = metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field;
-      return field.toLowerCase().includes(search);
-    });
-  }, [periodMetrics, resultSearch]);import React, { useState, useMemo } from 'react';
+            {filteredMetrics && (
+              <div style={{marginTop: '2rem'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap'}}>
+                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0}}>
+                    📊 기간별 측정 결과 ({startDate} ~ {endDate})
+                  </h2>
+                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                    <input
+                      type="text"
+                      value={resultSearch}
+                      onChange={(e) => setResultSearch(e.target.value)}
+                      placeholder="🔍 결과 내 검색..."
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.9rem',
+                        width: '200px'
+                      }}
+                    />
+                    <button
+                      onClick={exportToExcel}
+                      className="export-btn"
+                    >
+                      <Download size={18} />
+                      Excel 내보내기
+                    </button>
+                  </div>
+                </div>
+                
+                {resultSearch && (
+                  <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
+                    🔍 "{resultSearch}" 검색 결과: {filteredMetrics.length}개 항목
+                  </div>
+                )}
+                
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr style={{background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)'}}>
+                        <th style={{textAlign: 'left'}}>측정 항목</th>
+                        <th style={{textAlign: 'left'}}>계산 방식</th>
+                        <th style={{textAlign: 'right'}}>결과</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMetrics.map((metric, idx) => (
+                        <tr key={metric.id} className={idx % 2 === 0 ? 'even' : 'odd'}>
+                          <td style={{fontWeight: '600'}}>
+                            {metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field}
+                          </td>
+                          <td>
+                            {metric.calculation === 'COUNT' ? '개수' :
+                             metric.calculation === 'UNIQUE' ? '유니크 개수' :
+                             metric.calculation === 'SUM' ? '합계' :
+                             metric.calculation === 'AVG' ? '평균' :
+                             metric.calculation === 'MAX' ? '최대값' : '최소값'}
+                          </td>
+                          <td style={{textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem'}}>
+                            {typeof metric.value === 'number' ? metric.value.toLocaleString() : metric.value}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {pivotData && !periodMetrics && (
+              <div style={{marginTop: '2rem'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap'}}>
+                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0}}>피벗 테이블 결과</h2>
+                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+                    <input
+                      type="text"
+                      value={resultSearch}
+                      onChange={(e) => setResultSearch(e.target.value)}
+                      placeholder="🔍 결과 내 검색..."
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.9rem',
+                        width: '200px'
+                      }}
+                    />
+                    <button
+                      onClick={exportToExcel}
+                      className="export-btn"
+                    >
+                      <Download size={18} />
+                      Excel 내보내기
+                    </button>
+                  </div>
+                </div>
+                
+                {resultSearch && (
+                  <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
+                    🔍 "{resultSearch}" 검색 결과: {filteredPivotRows.length}개 행
+                  </div>
+                )}
+                
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        {pivotData.rowFields.map((field, idx) => (
+                          <th key={idx} className="sticky-col" style={{left: `${idx * 150}px`}}>
+                            {field}
+                          </th>
+                        ))}
+                        {pivotData.columns.flatMap(col => 
+                          valueFields.map((vf, vfIdx) => {
+                            const calcName = vf.calculation === 'COUNT' ? '개수' :
+                                           vf.calculation === 'UNIQUE' ? '유니크' :
+                                           vf.calculation === 'SUM' ? '합계' :
+                                           vf.calculation === 'AVG' ? '평균' :
+                                           vf.calculation === 'MAX' ? '최대' : '최소';
+                            return (
+                              <th key={`${col}-${vfIdx}`}>
+                                {col === 'Total' ? `${vf.field || calcName}` : `${col} (${vf.field || calcName})`}
+                              </th>
+                            );
+                          })
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPivotRows.map((rowKey, idx) => {
+                        const rowData = pivotData.data[rowKey];
+                        return (
+                          <tr key={rowKey} className={idx % 2 === 0 ? 'even' : 'odd'}>
+                            {rowData.fields.map((field, fieldIdx) => (
+                              <td key={fieldIdx} className="sticky-col" style={{left: `${fieldIdx * 150}px`}}>
+                                {field}
+                              </td>
+                            ))}
+                            {pivotData.columns.flatMap(col => 
+                              valueFields.map((vf, vfIdx) => (
+                                <td key={`${col}-${vfIdx}`}>
+                                  {calculateValue(rowData.data[col] || [], vf.calculation, vf.field)}
+                                </td>
+                              ))
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {!data.length && (
+              <div className="empty-state">
+                <BarChart3 size={64} />
+                <p>파일을 업로드하여 시작하세요</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;import React, { useState, useMemo } from 'react';
 import { Upload, Download, BarChart3, Table2, Settings, Plus, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -30,16 +182,13 @@ function App() {
   const [valueFields, setValueFields] = useState([
     { id: 1, field: '', calculation: 'COUNT' }
   ]);
-  const [uniqueField, setUniqueField] = useState('');
   const [showConfig, setShowConfig] = useState(true);
   const [dateFields, setDateFields] = useState([]);
   const [dateGrouping, setDateGrouping] = useState({});
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filterEnabled, setFilterEnabled] = useState(false);
-  
   const [resultSearch, setResultSearch] = useState('');
-  
   const [metrics, setMetrics] = useState([
     { id: 1, field: '', calculation: 'COUNT', uniqueField: '' }
   ]);
@@ -139,7 +288,6 @@ function App() {
   const filteredData = useMemo(() => {
     let result = data;
     
-    // 기간 필터 적용
     if (filterEnabled && startDate && endDate && dateFields.length > 0) {
       result = result.filter(row => {
         return dateFields.some(field => {
@@ -169,9 +317,8 @@ function App() {
     if (activeRowFields.length === 0) return null;
     
     filteredData.forEach(row => {
-      // 행 필드들을 배열로 유지 (분리된 컬럼으로 표시)
       const rowKeyArray = activeRowFields.map(field => formatDateValue(row[field], field));
-      const rowKey = rowKeyArray.join('|||'); // 내부 구분자
+      const rowKey = rowKeyArray.join('|||');
       
       const colKey = activeColumnFields.length 
         ? activeColumnFields.map(field => formatDateValue(row[field], field)).join(' | ')
@@ -237,13 +384,37 @@ function App() {
     if (!filterEnabled || !startDate || !endDate || !filteredData.length) return null;
     
     return metrics.map(metric => {
-      const value = calculateValue(filteredData, metric.calculation, metric.field, metric.uniqueField);
+      const value = calculateValue(filteredData, metric.calculation, metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field);
       return {
         ...metric,
         value
       };
     });
   }, [filteredData, metrics, filterEnabled, startDate, endDate]);
+
+  const filteredPivotRows = useMemo(() => {
+    if (!pivotData || !pivotData.rowKeys) return [];
+    if (!resultSearch) return pivotData.rowKeys;
+    
+    const search = resultSearch.toLowerCase();
+    return pivotData.rowKeys.filter(rowKey => {
+      const rowData = pivotData.data[rowKey];
+      return rowData.fields.some(field => 
+        String(field).toLowerCase().includes(search)
+      );
+    });
+  }, [pivotData, resultSearch]);
+
+  const filteredMetrics = useMemo(() => {
+    if (!periodMetrics) return null;
+    if (!resultSearch) return periodMetrics;
+    
+    const search = resultSearch.toLowerCase();
+    return periodMetrics.filter(metric => {
+      const field = metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field;
+      return field && field.toLowerCase().includes(search);
+    });
+  }, [periodMetrics, resultSearch]);
 
   const toggleField = (field, type) => {
     if (type === 'row') {
@@ -261,7 +432,6 @@ function App() {
     setRowFields([]);
     setColumnFields([]);
     setValueFields([{ id: 1, field: '', calculation: 'COUNT' }]);
-    setUniqueField('');
     setStartDate('');
     setEndDate('');
     setFilterEnabled(false);
@@ -319,7 +489,6 @@ function App() {
       XLSX.utils.book_append_sheet(wb, ws, "기간별 집계");
       XLSX.writeFile(wb, `period_metrics_${startDate}_${endDate}.xlsx`);
     } else if (pivotData) {
-      // 헤더 구성: 행 필드들 + 값 필드 * 열
       const headers = [
         ...pivotData.rowFields,
         ...pivotData.columns.flatMap(col => 
@@ -336,13 +505,13 @@ function App() {
       
       const ws_data = [
         headers,
-        ...pivotData.rows.map(rowKey => {
+        ...pivotData.rowKeys.map(rowKey => {
           const rowData = pivotData.data[rowKey];
           return [
             ...rowData.fields,
             ...pivotData.columns.flatMap(col => 
               valueFields.map(vf => 
-                calculateValue(rowData.data[col], vf.calculation, vf.field)
+                calculateValue(rowData.data[col] || [], vf.calculation, vf.field)
               )
             )
           ];
@@ -506,7 +675,7 @@ function App() {
                           </button>
                         </div>
                         
-                        {metrics.map((metric, index) => (
+                        {metrics.map((metric) => (
                           <div key={metric.id} style={{
                             display: 'flex',
                             gap: '0.5rem',
@@ -672,7 +841,7 @@ function App() {
                         </button>
                       </div>
                       
-                      {valueFields.map((valueField, index) => (
+                      {valueFields.map((valueField) => (
                         <div key={valueField.id} style={{
                           display: 'flex',
                           gap: '0.5rem',
@@ -741,174 +910,3 @@ function App() {
                     </div>
                   </>
                 )}
-              </div>
-            )}
-
-            {periodMetrics && filteredMetrics && (
-              <div style={{marginTop: '2rem'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap'}}>
-                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0}}>
-                    📊 기간별 측정 결과 ({startDate} ~ {endDate})
-                  </h2>
-                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
-                    <input
-                      type="text"
-                      value={resultSearch}
-                      onChange={(e) => setResultSearch(e.target.value)}
-                      placeholder="🔍 결과 내 검색..."
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.9rem',
-                        width: '200px'
-                      }}
-                    />
-                    <button
-                      onClick={exportToExcel}
-                      className="export-btn"
-                    >
-                      <Download size={18} />
-                      Excel 내보내기
-                    </button>
-                  </div>
-                </div>
-                
-                {resultSearch && (
-                  <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
-                    🔍 "{resultSearch}" 검색 결과: {filteredMetrics.length}개 항목
-                  </div>
-                )}
-                
-                <div className="table-container">
-                  <table>
-                    <thead>
-                      <tr style={{background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)'}}>
-                        <th style={{textAlign: 'left'}}>측정 항목</th>
-                        <th style={{textAlign: 'left'}}>계산 방식</th>
-                        <th style={{textAlign: 'right'}}>결과</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredMetrics.map((metric, idx) => (
-                        <tr key={metric.id} className={idx % 2 === 0 ? 'even' : 'odd'}>
-                          <td style={{fontWeight: '600'}}>
-                            {metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field}
-                          </td>
-                          <td>
-                            {metric.calculation === 'COUNT' ? '개수' :
-                             metric.calculation === 'UNIQUE' ? '유니크 개수' :
-                             metric.calculation === 'SUM' ? '합계' :
-                             metric.calculation === 'AVG' ? '평균' :
-                             metric.calculation === 'MAX' ? '최대값' : '최소값'}
-                          </td>
-                          <td style={{textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem'}}>
-                            {typeof metric.value === 'number' ? metric.value.toLocaleString() : metric.value}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {pivotData && !periodMetrics && (
-              <div style={{marginTop: '2rem'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap'}}>
-                  <h2 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', margin: 0}}>피벗 테이블 결과</h2>
-                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
-                    <input
-                      type="text"
-                      value={resultSearch}
-                      onChange={(e) => setResultSearch(e.target.value)}
-                      placeholder="🔍 결과 내 검색..."
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.9rem',
-                        width: '200px'
-                      }}
-                    />
-                    <button
-                      onClick={exportToExcel}
-                      className="export-btn"
-                    >
-                      <Download size={18} />
-                      Excel 내보내기
-                    </button>
-                  </div>
-                </div>
-                
-                {resultSearch && (
-                  <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', background: '#fef3c7', borderRadius: '0.5rem', fontSize: '0.9rem'}}>
-                    🔍 "{resultSearch}" 검색 결과: {filteredPivotRows.length}개 행
-                  </div>
-                )}
-                
-                <div className="table-container">
-                  <table>
-                    <thead>
-                      <tr>
-                        {pivotData.rowFields.map((field, idx) => (
-                          <th key={idx} className="sticky-col" style={{left: `${idx * 150}px`}}>
-                            {field}
-                          </th>
-                        ))}
-                        {pivotData.columns.flatMap(col => 
-                          valueFields.map((vf, vfIdx) => {
-                            const calcName = vf.calculation === 'COUNT' ? '개수' :
-                                           vf.calculation === 'UNIQUE' ? '유니크' :
-                                           vf.calculation === 'SUM' ? '합계' :
-                                           vf.calculation === 'AVG' ? '평균' :
-                                           vf.calculation === 'MAX' ? '최대' : '최소';
-                            return (
-                              <th key={`${col}-${vfIdx}`}>
-                                {col === 'Total' ? `${vf.field || calcName}` : `${col} (${vf.field || calcName})`}
-                              </th>
-                            );
-                          })
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPivotRows.map((rowKey, idx) => {
-                        const rowData = pivotData.data[rowKey];
-                        return (
-                          <tr key={rowKey} className={idx % 2 === 0 ? 'even' : 'odd'}>
-                            {rowData.fields.map((field, fieldIdx) => (
-                              <td key={fieldIdx} className="sticky-col" style={{left: `${fieldIdx * 150}px`}}>
-                                {field}
-                              </td>
-                            ))}
-                            {pivotData.columns.flatMap(col => 
-                              valueFields.map((vf, vfIdx) => (
-                                <td key={`${col}-${vfIdx}`}>
-                                  {calculateValue(rowData.data[col], vf.calculation, vf.field)}
-                                </td>
-                              ))
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {!data.length && (
-              <div className="empty-state">
-                <BarChart3 size={64} />
-                <p>파일을 업로드하여 시작하세요</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default App;
