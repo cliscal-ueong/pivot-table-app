@@ -169,24 +169,33 @@ function App() {
     if (activeRowFields.length === 0) return null;
     
     filteredData.forEach(row => {
-      const rowKey = activeRowFields.map(field => formatDateValue(row[field], field)).join(' | ');
+      // 행 필드들을 배열로 유지 (분리된 컬럼으로 표시)
+      const rowKeyArray = activeRowFields.map(field => formatDateValue(row[field], field));
+      const rowKey = rowKeyArray.join('|||'); // 내부 구분자
+      
       const colKey = activeColumnFields.length 
         ? activeColumnFields.map(field => formatDateValue(row[field], field)).join(' | ')
         : 'Total';
       
-      if (!grouped[rowKey]) grouped[rowKey] = {};
-      if (!grouped[rowKey][colKey]) grouped[rowKey][colKey] = [];
+      if (!grouped[rowKey]) {
+        grouped[rowKey] = {
+          fields: rowKeyArray,
+          data: {}
+        };
+      }
+      if (!grouped[rowKey].data[colKey]) grouped[rowKey].data[colKey] = [];
       
-      grouped[rowKey][colKey].push(row);
+      grouped[rowKey].data[colKey].push(row);
     });
 
     const colHeaders = new Set();
     Object.values(grouped).forEach(rowData => {
-      Object.keys(rowData).forEach(col => colHeaders.add(col));
+      Object.keys(rowData.data).forEach(col => colHeaders.add(col));
     });
 
     const result = {
       rows: Object.keys(grouped).sort(),
+      rowFields: activeRowFields,
       columns: Array.from(colHeaders).sort(),
       data: grouped
     };
@@ -194,15 +203,15 @@ function App() {
     return result;
   }, [filteredData, rowFields, columnFields, dateGrouping, filterEnabled, startDate, endDate, dateFields]);
 
-  const calculateValue = (items, calculation, field, uniqueField) => {
+  const calculateValue = (items, calculation, field) => {
     if (!items || items.length === 0) return 0;
     
     switch(calculation) {
       case 'COUNT':
         return items.length;
       case 'UNIQUE':
-        if (!uniqueField) return 0;
-        const uniqueValues = new Set(items.map(item => item[uniqueField]));
+        if (!field) return 0;
+        const uniqueValues = new Set(items.map(item => item[field]));
         return uniqueValues.size;
       case 'SUM':
         return items.reduce((sum, item) => {
@@ -251,14 +260,28 @@ function App() {
   const resetAllSettings = () => {
     setRowFields([]);
     setColumnFields([]);
-    setValueField('');
-    setAggregation('COUNT');
+    setValueFields([{ id: 1, field: '', calculation: 'COUNT' }]);
     setUniqueField('');
     setStartDate('');
     setEndDate('');
     setFilterEnabled(false);
     setResultSearch('');
     setMetrics([{ id: 1, field: '', calculation: 'COUNT', uniqueField: '' }]);
+  };
+
+  const addValueField = () => {
+    const newId = Math.max(...valueFields.map(v => v.id), 0) + 1;
+    setValueFields([...valueFields, { id: newId, field: '', calculation: 'COUNT' }]);
+  };
+
+  const removeValueField = (id) => {
+    if (valueFields.length > 1) {
+      setValueFields(valueFields.filter(v => v.id !== id));
+    }
+  };
+
+  const updateValueField = (id, updates) => {
+    setValueFields(valueFields.map(v => v.id === id ? { ...v, ...updates } : v));
   };
 
   const addMetric = () => {
@@ -296,14 +319,34 @@ function App() {
       XLSX.utils.book_append_sheet(wb, ws, "기간별 집계");
       XLSX.writeFile(wb, `period_metrics_${startDate}_${endDate}.xlsx`);
     } else if (pivotData) {
+      // 헤더 구성: 행 필드들 + 값 필드 * 열
+      const headers = [
+        ...pivotData.rowFields,
+        ...pivotData.columns.flatMap(col => 
+          valueFields.map(vf => {
+            const calcName = vf.calculation === 'COUNT' ? '개수' :
+                           vf.calculation === 'UNIQUE' ? '유니크' :
+                           vf.calculation === 'SUM' ? '합계' :
+                           vf.calculation === 'AVG' ? '평균' :
+                           vf.calculation === 'MAX' ? '최대' : '최소';
+            return col === 'Total' ? `${vf.field || calcName}` : `${col}_${vf.field || calcName}`;
+          })
+        )
+      ];
+      
       const ws_data = [
-        ['', ...pivotData.columns],
-        ...pivotData.rows.map(row => [
-          row,
-          ...pivotData.columns.map(col => 
-            calculateValue(pivotData.data[row][col], aggregation, valueField, uniqueField)
-          )
-        ])
+        headers,
+        ...pivotData.rows.map(rowKey => {
+          const rowData = pivotData.data[rowKey];
+          return [
+            ...rowData.fields,
+            ...pivotData.columns.flatMap(col => 
+              valueFields.map(vf => 
+                calculateValue(rowData.data[col], vf.calculation, vf.field)
+              )
+            )
+          ];
+        })
       ];
       
       const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -605,44 +648,96 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="config-box aggregation">
-                      <h3>어떻게 계산할까요?</h3>
-                      <select
-                        value={aggregation}
-                        onChange={(e) => setAggregation(e.target.value)}
-                        className="select"
-                      >
-                        <option value="COUNT">개수</option>
-                        <option value="UNIQUE">유니크 개수</option>
-                        <option value="SUM">합계</option>
-                        <option value="AVG">평균</option>
-                        <option value="MAX">최대값</option>
-                        <option value="MIN">최소값</option>
-                      </select>
+                    <div className="config-box" style={{gridColumn: '1 / -1', background: '#f0fdf4', border: '2px solid #22c55e'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                        <h3 style={{color: '#166534', margin: 0}}>📊 값 (여러 개 추가 가능)</h3>
+                        <button
+                          onClick={addValueField}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1rem',
+                            background: '#22c55e',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          <Plus size={16} />
+                          값 추가
+                        </button>
+                      </div>
                       
-                      {(aggregation === 'UNIQUE' || aggregation === 'SUM' || aggregation === 'AVG' || aggregation === 'MAX' || aggregation === 'MIN') && (
-                        <div style={{marginTop: '1rem'}}>
-                          <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
-                            {aggregation === 'UNIQUE' ? '어떤 필드를 유니크로 셀까요?' : '어떤 필드를 계산할까요?'}
-                          </label>
-                          <select
-                            value={aggregation === 'UNIQUE' ? uniqueField : valueField}
-                            onChange={(e) => {
-                              if (aggregation === 'UNIQUE') {
-                                setUniqueField(e.target.value);
-                              } else {
-                                setValueField(e.target.value);
-                              }
-                            }}
-                            className="select"
-                          >
-                            <option value="">선택하세요</option>
-                            {columns.map(col => (
-                              <option key={col} value={col}>{col}</option>
-                            ))}
-                          </select>
+                      {valueFields.map((valueField, index) => (
+                        <div key={valueField.id} style={{
+                          display: 'flex',
+                          gap: '0.5rem',
+                          marginBottom: '0.75rem',
+                          alignItems: 'end',
+                          padding: '1rem',
+                          background: 'white',
+                          borderRadius: '0.5rem',
+                          border: '1px solid #bbf7d0'
+                        }}>
+                          <div style={{flex: 1}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.85rem'}}>
+                              측정 항목 먼저 선택
+                            </label>
+                            <select
+                              value={valueField.field}
+                              onChange={(e) => updateValueField(valueField.id, { field: e.target.value })}
+                              className="select"
+                              style={{fontSize: '0.9rem'}}
+                            >
+                              <option value="">선택하세요</option>
+                              {columns.map(col => (
+                                <option key={col} value={col}>{col}</option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          <div style={{flex: 1}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.85rem'}}>
+                              계산 방식
+                            </label>
+                            <select
+                              value={valueField.calculation}
+                              onChange={(e) => updateValueField(valueField.id, { calculation: e.target.value })}
+                              className="select"
+                              style={{fontSize: '0.9rem'}}
+                            >
+                              <option value="COUNT">개수</option>
+                              <option value="UNIQUE">유니크 개수</option>
+                              <option value="SUM">합계</option>
+                              <option value="AVG">평균</option>
+                              <option value="MAX">최대값</option>
+                              <option value="MIN">최소값</option>
+                            </select>
+                          </div>
+                          
+                          {valueFields.length > 1 && (
+                            <button
+                              onClick={() => removeValueField(valueField.id)}
+                              style={{
+                                padding: '0.75rem',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.5rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
                   </>
                 )}
@@ -756,25 +851,47 @@ function App() {
                   <table>
                     <thead>
                       <tr>
-                        <th className="sticky-col">
-                          {rowFields.filter(f => !dateFields.includes(f) || !filterEnabled).join(' / ')}
-                        </th>
-                        {pivotData.columns.map(col => (
-                          <th key={col}>{col}</th>
+                        {pivotData.rowFields.map((field, idx) => (
+                          <th key={idx} className="sticky-col" style={{left: `${idx * 150}px`}}>
+                            {field}
+                          </th>
                         ))}
+                        {pivotData.columns.flatMap(col => 
+                          valueFields.map((vf, vfIdx) => {
+                            const calcName = vf.calculation === 'COUNT' ? '개수' :
+                                           vf.calculation === 'UNIQUE' ? '유니크' :
+                                           vf.calculation === 'SUM' ? '합계' :
+                                           vf.calculation === 'AVG' ? '평균' :
+                                           vf.calculation === 'MAX' ? '최대' : '최소';
+                            return (
+                              <th key={`${col}-${vfIdx}`}>
+                                {col === 'Total' ? `${vf.field || calcName}` : `${col} (${vf.field || calcName})`}
+                              </th>
+                            );
+                          })
+                        )}
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredPivotRows.map((row, idx) => (
-                        <tr key={row} className={idx % 2 === 0 ? 'even' : 'odd'}>
-                          <td className="sticky-col">{row}</td>
-                          {pivotData.columns.map(col => (
-                            <td key={col}>
-                              {calculateValue(pivotData.data[row][col], aggregation, valueField, uniqueField)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                      {filteredPivotRows.map((rowKey, idx) => {
+                        const rowData = pivotData.data[rowKey];
+                        return (
+                          <tr key={rowKey} className={idx % 2 === 0 ? 'even' : 'odd'}>
+                            {rowData.fields.map((field, fieldIdx) => (
+                              <td key={fieldIdx} className="sticky-col" style={{left: `${fieldIdx * 150}px`}}>
+                                {field}
+                              </td>
+                            ))}
+                            {pivotData.columns.flatMap(col => 
+                              valueFields.map((vf, vfIdx) => (
+                                <td key={`${col}-${vfIdx}`}>
+                                  {calculateValue(rowData.data[col], vf.calculation, vf.field)}
+                                </td>
+                              ))
+                            )}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
