@@ -1,4 +1,22 @@
-import React, { useState, useMemo } from 'react';
+// 결과 테이블 검색 필터링
+  const filteredPivotRows = useMemo(() => {
+    if (!pivotData || !resultSearch) return pivotData?.rows || [];
+    
+    const search = resultSearch.toLowerCase();
+    return pivotData.rows.filter(row => {
+      return row.toLowerCase().includes(search);
+    });
+  }, [pivotData, resultSearch]);
+
+  const filteredMetrics = useMemo(() => {
+    if (!periodMetrics || !resultSearch) return periodMetrics;
+    
+    const search = resultSearch.toLowerCase();
+    return periodMetrics.filter(metric => {
+      const field = metric.calculation === 'UNIQUE' ? metric.uniqueField : metric.field;
+      return field.toLowerCase().includes(search);
+    });
+  }, [periodMetrics, resultSearch]);import React, { useState, useMemo } from 'react';
 import { Upload, Download, BarChart3, Table2, Settings, Plus, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -19,9 +37,7 @@ function App() {
   const [endDate, setEndDate] = useState('');
   const [filterEnabled, setFilterEnabled] = useState(false);
   
-  const [searchField, setSearchField] = useState('');
-  const [searchValue, setSearchValue] = useState('');
-  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [resultSearch, setResultSearch] = useState('');
   
   const [metrics, setMetrics] = useState([
     { id: 1, field: '', calculation: 'COUNT', uniqueField: '' }
@@ -122,15 +138,6 @@ function App() {
   const filteredData = useMemo(() => {
     let result = data;
     
-    // 검색 필터 적용
-    if (searchEnabled && searchField && searchValue) {
-      result = result.filter(row => {
-        const fieldValue = String(row[searchField] || '').toLowerCase();
-        const search = searchValue.toLowerCase();
-        return fieldValue.includes(search);
-      });
-    }
-    
     // 기간 필터 적용
     if (filterEnabled && startDate && endDate && dateFields.length > 0) {
       result = result.filter(row => {
@@ -143,7 +150,7 @@ function App() {
     }
     
     return result;
-  }, [data, searchEnabled, searchField, searchValue, filterEnabled, startDate, endDate, dateFields]);
+  }, [data, filterEnabled, startDate, endDate, dateFields]);
 
   const pivotData = useMemo(() => {
     if (!filteredData.length || !rowFields.length) return null;
@@ -249,9 +256,7 @@ function App() {
     setStartDate('');
     setEndDate('');
     setFilterEnabled(false);
-    setSearchField('');
-    setSearchValue('');
-    setSearchEnabled(false);
+    setResultSearch('');
     setMetrics([{ id: 1, field: '', calculation: 'COUNT', uniqueField: '' }]);
   };
 
@@ -362,80 +367,6 @@ function App() {
 
             {showConfig && columns.length > 0 && (
               <div className="config-grid">
-                <div className="config-box" style={{gridColumn: '1 / -1', background: '#fef2f2', border: '2px solid #f87171'}}>
-                  <h3 style={{color: '#991b1b'}}>🔍 검색 필터 (선택사항)</h3>
-                  <div style={{display: 'flex', gap: '1rem', alignItems: 'end', flexWrap: 'wrap'}}>
-                    <div style={{flex: '1', minWidth: '200px'}}>
-                      <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
-                        검색할 필드
-                      </label>
-                      <select
-                        value={searchField}
-                        onChange={(e) => setSearchField(e.target.value)}
-                        className="select"
-                      >
-                        <option value="">선택하세요</option>
-                        {columns.map(col => (
-                          <option key={col} value={col}>{col}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={{flex: '2', minWidth: '250px'}}>
-                      <label style={{display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem'}}>
-                        검색어 (부분 일치)
-                      </label>
-                      <input
-                        type="text"
-                        value={searchValue}
-                        onChange={(e) => setSearchValue(e.target.value)}
-                        placeholder="검색할 값을 입력하세요"
-                        className="select"
-                        style={{width: '100%'}}
-                      />
-                    </div>
-                    <div style={{display: 'flex', gap: '0.5rem'}}>
-                      <button
-                        onClick={() => setSearchEnabled(true)}
-                        disabled={!searchField || !searchValue}
-                        style={{
-                          padding: '0.75rem 1.5rem',
-                          background: (searchField && searchValue) ? '#ef4444' : '#94a3b8',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: (searchField && searchValue) ? 'pointer' : 'not-allowed',
-                          fontWeight: '600'
-                        }}
-                      >
-                        검색
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSearchEnabled(false);
-                          setSearchField('');
-                          setSearchValue('');
-                        }}
-                        style={{
-                          padding: '0.75rem 1.5rem',
-                          background: '#64748b',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          fontWeight: '600'
-                        }}
-                      >
-                        초기화
-                      </button>
-                    </div>
-                  </div>
-                  {searchEnabled && searchField && searchValue && (
-                    <div style={{marginTop: '1rem', padding: '0.75rem', background: '#ef4444', color: 'white', borderRadius: '0.5rem', fontWeight: '600'}}>
-                      ✓ 검색 적용 중: {searchField} = "{searchValue}" ({filteredData.length}개 행)
-                    </div>
-                  )}
-                </div>
-
                 {dateFields.length > 0 && (
                   <>
                     <div className="config-box date-filter" style={{gridColumn: '1 / -1', background: '#dbeafe'}}>
