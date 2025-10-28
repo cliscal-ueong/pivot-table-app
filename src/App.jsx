@@ -193,14 +193,14 @@ function App() {
       Object.keys(rowData.data).forEach(col => colHeaders.add(col));
     });
 
-    const result = {
-      rows: Object.keys(grouped).sort(),
+    const rowKeys = Object.keys(grouped).sort();
+
+    return {
+      rowKeys: rowKeys,
       rowFields: activeRowFields,
       columns: Array.from(colHeaders).sort(),
       data: grouped
     };
-
-    return result;
   }, [filteredData, rowFields, columnFields, dateGrouping, filterEnabled, startDate, endDate, dateFields]);
 
   const calculateValue = (items, calculation, field) => {
