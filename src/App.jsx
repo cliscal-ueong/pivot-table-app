@@ -27,8 +27,9 @@ function App() {
   const [columns, setColumns] = useState([]);
   const [rowFields, setRowFields] = useState([]);
   const [columnFields, setColumnFields] = useState([]);
-  const [valueField, setValueField] = useState('');
-  const [aggregation, setAggregation] = useState('COUNT');
+  const [valueFields, setValueFields] = useState([
+    { id: 1, field: '', calculation: 'COUNT' }
+  ]);
   const [uniqueField, setUniqueField] = useState('');
   const [showConfig, setShowConfig] = useState(true);
   const [dateFields, setDateFields] = useState([]);
